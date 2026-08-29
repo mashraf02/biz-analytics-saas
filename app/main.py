@@ -1,14 +1,16 @@
 from fastapi import FastAPI
 
 from app.database import engine, Base
-from app.routers import auth
+from app.routers import auth, customers, products, orders
 
-# Import models so SQLAlchemy knows about them before creating tables
-from app.models import tenant, user
+from app.models import tenant, user, customer, product, order
 
 app = FastAPI(title="Business Analytics SaaS")
 
 app.include_router(auth.router)
+app.include_router(customers.router)
+app.include_router(products.router)
+app.include_router(orders.router)
 
 
 @app.on_event("startup")
