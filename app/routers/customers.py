@@ -1,5 +1,7 @@
+import csv
+import io
 from typing import List
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, UploadFile, File
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -27,6 +29,12 @@ class CustomerOut(BaseModel):
         from_attributes = True
 
 
+class UploadResult(BaseModel):
+    inserted: int
+    failed: int
+    errors: List[str]
+
+
 @router.post("", response_model=CustomerOut)
 def create_customer(
     payload: CustomerCreate,
@@ -51,3 +59,35 @@ def list_customers(
     current_user: User = Depends(get_current_user),
 ):
     return db.query(Customer).filter(Customer.tenant_id == current_user.tenant_id).all()
+
+
+@router.post("/upload", response_model=UploadResult)
+def upload_customers_csv(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    content = file.file.read().decode("utf-8-sig")  # handles Excel-exported CSVs with BOM
+    reader = csv.DictReader(io.StringIO(content))
+
+    inserted = 0
+    errors: List[str] = []
+
+    for row_number, row in enumerate(reader, start=2):  # start=2: row 1 is the header
+        name = (row.get("name") or "").strip()
+        if not name:
+            errors.append(f"Row {row_number}: missing name, skipped")
+            continue
+
+        customer = Customer(
+            tenant_id=current_user.tenant_id,
+            name=name,
+            email=(row.get("email") or "").strip() or None,
+            phone=(row.get("phone") or "").strip() or None,
+        )
+        db.add(customer)
+        inserted += 1
+
+    db.commit()
+
+    return UploadResult(inserted=inserted, failed=len(errors), errors=errors)
