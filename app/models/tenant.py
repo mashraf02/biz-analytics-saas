@@ -7,4 +7,5 @@ class Tenant(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     business_name = Column(String, nullable=False)
+    plan = Column(String, nullable=False, default="free")  # "free" or "pro"
     created_at = Column(DateTime(timezone=True), server_default=func.now())

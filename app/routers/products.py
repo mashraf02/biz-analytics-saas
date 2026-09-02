@@ -6,8 +6,10 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.core.deps import get_current_user
+from app.core.limits import enforce_limit
 from app.models.user import User
 from app.models.product import Product
+from app.models.tenant import Tenant
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -34,6 +36,9 @@ def create_product(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    tenant = db.query(Tenant).filter(Tenant.id == current_user.tenant_id).first()
+    enforce_limit(db, Product, current_user.tenant_id, tenant.plan, "max_products", "products")
+
     product = Product(
         tenant_id=current_user.tenant_id,
         name=payload.name,
