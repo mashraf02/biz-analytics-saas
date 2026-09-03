@@ -2,9 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import engine, Base
-from app.routers import auth, customers, products, orders, analytics, integrations, ml, exports
+from app.routers import auth, customers, products, orders, analytics, integrations, ml, exports, audit_logs
 
-from app.models import tenant, user, customer, product, order, integration
+from app.models import tenant, user, customer, product, order, integration, audit_log
 
 app = FastAPI(title="Business Analytics SaaS")
 
@@ -24,6 +24,7 @@ app.include_router(analytics.router)
 app.include_router(integrations.router)
 app.include_router(ml.router)
 app.include_router(exports.router)
+app.include_router(audit_logs.router)
 
 
 @app.on_event("startup")

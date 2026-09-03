@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.core.deps import get_current_user
 from app.core.limits import enforce_limit
+from app.core.audit import log_action
 from app.models.user import User
 from app.models.product import Product
 from app.models.tenant import Tenant
@@ -46,6 +47,14 @@ def create_product(
         cost=payload.cost,
     )
     db.add(product)
+    db.flush()
+
+    log_action(
+        db, current_user.tenant_id, current_user.id,
+        action="product_created", resource_type="product", resource_id=product.id,
+        details=f"Created product '{product.name}'",
+    )
+
     db.commit()
     db.refresh(product)
     return product

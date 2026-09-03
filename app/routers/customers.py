@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.core.deps import get_current_user
 from app.core.limits import enforce_limit
+from app.core.audit import log_action
 from app.models.user import User
 from app.models.customer import Customer
 from app.models.tenant import Tenant
@@ -53,6 +54,14 @@ def create_customer(
         phone=payload.phone,
     )
     db.add(customer)
+    db.flush()
+
+    log_action(
+        db, current_user.tenant_id, current_user.id,
+        action="customer_created", resource_type="customer", resource_id=customer.id,
+        details=f"Created customer '{customer.name}'",
+    )
+
     db.commit()
     db.refresh(customer)
     return customer
@@ -92,6 +101,12 @@ def upload_customers_csv(
         )
         db.add(customer)
         inserted += 1
+
+    log_action(
+        db, current_user.tenant_id, current_user.id,
+        action="customers_csv_uploaded", resource_type="customer",
+        details=f"CSV upload: {inserted} inserted, {len(errors)} failed",
+    )
 
     db.commit()
 

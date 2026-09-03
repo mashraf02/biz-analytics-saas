@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.core.deps import get_current_user
+from app.core.audit import log_action
 from app.models.user import User
 from app.models.product import Product
 from app.models.order import Order, OrderItem
@@ -53,7 +54,7 @@ def create_order(
 
     order = Order(tenant_id=current_user.tenant_id, customer_id=payload.customer_id, total_amount=0)
     db.add(order)
-    db.flush()  # get order.id before committing
+    db.flush()
 
     total = Decimal("0")
 
@@ -81,6 +82,13 @@ def create_order(
         db.add(order_item)
 
     order.total_amount = total
+
+    log_action(
+        db, current_user.tenant_id, current_user.id,
+        action="order_created", resource_type="order", resource_id=order.id,
+        details=f"Created order #{order.id}, total ৳{total}",
+    )
+
     db.commit()
     db.refresh(order)
     return order
